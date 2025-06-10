@@ -2,8 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth.models import User
-from index.models import Form,User, Questions
-from .serializers import FormSerializer,QuestionsSerializer
+from index.models import Form,User, Questions,Choices
+from .serializers import FormSerializer,QuestionsSerializer,ChoicesSerializer
 
 
 class FormAPI(APIView):
@@ -166,4 +166,77 @@ class QuestionAPI(APIView):
             'message':'something went wrong',
             'data':{}
             })
-        
+            
+            
+            
+class ChoiceAPI(APIView):
+    def post(self, request):
+        data= request.data
+        if not data.get('form_id') or not data.get('question_id'):
+            return Response({
+                        'status':False,
+                        'message':' form_id and question_id is required',
+                        'data':{}
+                    })
+        data['choice']='Option'   
+        serializer=ChoicesSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            form=Form.objects.get(id=data['form_id'])
+            form.questions.get(id=data['question_id']).choices.add(Choices.objects.get(id=serializer.data['id']))
+            
+            return Response({
+                        'status':True,
+                        'message':' choice created',
+                        'data':serializer.data
+                    })
+        return Response({
+                    'status':False,
+                    'message':'form  not updated ',
+                    'data':serializer.errors
+                    })   
+    def patch(self , request):
+        try:
+            data=request.data
+            if not data.get('choice_id'):
+                return Response({
+                            'status':False,
+                            'message':' choice_id is required',
+                            'data':{}
+                        })
+                
+            choice_obj=Choices.objects.filter(id=data.get('choice_id'))  
+            
+            
+            if  choice_obj.exists():
+                    serializer =ChoicesSerializer(choice_obj[0],data=data,partial=True)
+                    if serializer.is_valid():
+                        serializer.save()
+                        return Response({
+                        'status':True,
+                        'message':'choice updated is sucessfully',
+                        'data':serializer.data
+                        })
+                
+                    return Response({
+                    'status':False,
+                    'message':'form  not updated ',
+                    'data':serializer.errors
+                    })    
+                
+            
+            return Response({
+                'status':False,
+                'message':'invalid choice_id ',
+                'data':{}
+                })     
+        except  Exception as e:
+            print(e)
+            return Response({
+            'status':False,
+            'message':'something went wrong',
+            'data':{}
+            })        
+
+            
+    
